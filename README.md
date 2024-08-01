@@ -1,32 +1,38 @@
-myapp/
-├─ cmd/                        # 主应用程序入口
-│   ├─ main.go                 # 主应用程序入口文件
-│   └─ ...
-├─ pkg/                        # 公共库和可重用的包
-│   ├─ device_api/              # 设备API服务模块
-│   │   ├─ api/                 # API处理程序
-│   │   │   └─ ...
-│   │   ├─ models/              # 数据模型
-│   │   │   └─ ...
-│   │   └─ ...
-│   ├─ tcp_client_manager/      # TCP客户端管理器模块
-│   │   ├─ manager/             # TCP客户端管理程序
-│   │   │   └─ ...
-│   │   └─ ...
-│   ├─ data_processing/         # 数据处理模块
-│   │   ├─ processor/           # 数据处理程序
-│   │   │   └─ ...
-│   │   └─ ...
-├─ internal/                    # 内部应用程序代码
-│   ├─ config/                  # 应用程序配置
-│   │   └─ ...
-│   └─ ...
-├─ test/                        # 测试代码
-│   ├─ device_api/              # 设备API测试
-│   │   └─ ...
-│   ├─ tcp_client_manager/      # TCP客户端管理器测试
-│   │   └─ ...
-│   ├─ data_processing/         # 数据处理模块测试
-│   │   └─ ...
-│   └─ ...
-└─ go.mod                       # Go模块依赖管理文件
+project/
+|-- cmd/
+|   |-- api-service/
+|       |-- main.go
+|-- pkg/
+|   |-- deviceapi/
+|   |   |-- server.go
+|   |   |-- handlers.go
+|   |   |-- models.go
+|   |   |-- ...
+|   |-- tcpclient/
+|   |   |-- client.go
+|   |   |-- manager.go
+|   |   |-- ...
+|   |-- dataprocessing/
+|   |   |-- processor.go
+|   |   |-- storage.go
+|   |   |-- ...
+|-- internal/
+|   |-- config/
+|   |   |-- config.go
+|   |-- log/
+|   |   |-- logger.go
+|-- go.mod
+|-- go.sum
+|-- README.md
+|-- frontend/
+|   |-- package.json
+|   |-- public/
+|   |   |-- index.html
+|   |-- src/
+|   |   |-- App.js
+|   |   |-- components/
+|   |   |   |-- DeviceList.js
+|   |   |   |-- DeviceForm.js
+|   |   |-- services/
+|   |   |   |-- apiService.js
+|   |   |-- ...
