@@ -7,7 +7,7 @@ export function fetchDevices() {
 }
 
 export function createDevice(device) {
-    console.log(`${apiUrl}/devices`, device);
+    // console.log(`${apiUrl}/devices`, device);
     return axios.post(`${apiUrl}/devices`, device);
 }
 

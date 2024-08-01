@@ -7,15 +7,21 @@ function App() {
     const [devices, setDevices] = useState([]);
 
     useEffect(() => {
-      handleGetDevices(); // 调用API函数
+        getDevices(); // 调用API函数
     }, []);
 
-    const handleGetDevices = async () => {
+    const getDevices = async () => {
         try {
-            const response = await fetchDevices(); // 使用导入的API函数
-            setDevices(response.data);
+            const response = await fetchDevices();
+            if (Array.isArray(response.data)) {
+                setDevices(response.data);
+            } else {
+                console.error('Invalid response format:', response);
+            }
         } catch (error) {
             console.error('Error fetching devices:', error);
+            // 如果需要，可以设置一个默认的设备列表或错误状态
+            setDevices([]);
         }
     };
 

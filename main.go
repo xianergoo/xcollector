@@ -1,5 +1,7 @@
 package main
 
-func main() {
+import "xCollector/cmd"
 
+func main() {
+	cmd.Run()
 }
