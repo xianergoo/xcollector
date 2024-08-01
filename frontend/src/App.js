@@ -16,7 +16,9 @@ function App() {
             if (Array.isArray(response.data)) {
                 setDevices(response.data);
             } else {
-                console.error('Invalid response format:', response);
+                console.error('Invalid response format:', response.data);
+                // 设置一个空数组作为默认值
+                setDevices([]);
             }
         } catch (error) {
             console.error('Error fetching devices:', error);

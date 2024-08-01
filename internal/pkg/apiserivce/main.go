@@ -2,6 +2,7 @@ package api_service
 
 import (
 	"log"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -29,31 +30,61 @@ func StartService() error {
 type Device struct {
 	ID        int    `json:"id"`
 	IPAddress string `json:"ip_address"`
-	GroupNo   int    `json:"group"`
+	Group     int    `json:"group"`
 }
 
 var devices = []Device{
-	{ID: 1, IPAddress: "192.168.4.223", GroupNo: 1},
-	{ID: 2, IPAddress: "192.168.4.179", GroupNo: 8},
+	{ID: 1, IPAddress: "192.168.4.223", Group: 1},
+	{ID: 2, IPAddress: "192.168.4.179", Group: 8},
 }
 
 // getDevices 获取设备列表
 func getDevices(c *gin.Context) {
 	// 实现获取设备列表的逻辑
 	log.Print(devices)
-	c.JSON(200, gin.H{"data": devices})
+	c.JSON(200, devices)
 }
 
 // createDevice 创建设备
 func createDevice(c *gin.Context) {
 	// 实现创建设备的逻辑
+	var newDevice Device
 
-	c.JSON(201, gin.H{"message": "Device created"})
+	if err := c.ShouldBindJSON(&newDevice); err != nil {
+		log.Print(err)
+		c.JSON(400, gin.H{"error": "Invalid request body"})
+		return
+	}
+
+	newDevice.ID = len(devices) + 1
+	devices = append(devices, newDevice)
+
+	c.JSON(201, gin.H{"device_id": newDevice.ID})
 }
 
 // deleteDevice 删除设备
 func deleteDevice(c *gin.Context) {
 	// 实现删除设备的逻辑
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid deviceid"})
+		return
+	}
+
+	index := -1
+	for i, d := range devices {
+		if d.ID == id {
+			index = i
+			break
+		}
+	}
+
+	if index == 01 {
+		c.JSON(404, gin.H{"error": "Device not found"})
+		return
+	}
+
+	devices = append(devices[:index], devices[index+1:]...)
 	c.JSON(200, gin.H{"message": "Device deleted"})
 }
 

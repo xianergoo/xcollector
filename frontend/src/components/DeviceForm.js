@@ -6,7 +6,7 @@ function DeviceForm({ onCreateDevice }) {
 
     const handleSubmit = async (event) => {
         event.preventDefault();
-        const newDevice = { ip_address: ipAddress, group };
+        const newDevice = { ip_address: ipAddress, group: parseInt(group, 10) };
         await onCreateDevice(newDevice);
         setIPAddress('');
         setGroup('');
@@ -20,7 +20,7 @@ function DeviceForm({ onCreateDevice }) {
             </label>
             <label>
                 Group:
-                <input type="text" value={group} onChange={(e) => setGroup(e.target.value)} />
+                <input type="number"  value={group} onChange={(e) => setGroup(e.target.value)} />
             </label>
             <button type="submit">Add Device</button>
         </form>
