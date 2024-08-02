@@ -1,6 +1,8 @@
 package cmd
 
-import api_service "xCollector/internal/pkg/apiserivce"
+import (
+	"xCollector/internal/pkg/receiver"
+)
 
 // "github.com/yourusername/xCollector/internal/pkg/database"
 
@@ -23,5 +25,7 @@ import api_service "xCollector/internal/pkg/apiserivce"
 // }
 
 func Run() {
-	api_service.StartService()
+	receiver.Start()
+	// web_server.Start()
+
 }
