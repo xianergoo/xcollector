@@ -1,6 +1,7 @@
 package receiver
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -8,13 +9,20 @@ import (
 
 type TTransceiver struct {
 	TEngine
-	TPackageQueue
-	Enabled bool
+	Readers      [127]TReader
+	PackageQueue TPackageQueue
+	Enabled      bool
 }
 
 type TPackageQueue struct {
 	queue []TSxPackage
 	mu    sync.Mutex
+}
+
+func (q *TPackageQueue) Dequeue() TSxPackage {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	return q.queue[len(q.queue)-1]
 }
 
 func (q *TPackageQueue) Enqueue(pkg TSxPackage) {
@@ -38,7 +46,6 @@ func (q *TPackageQueue) Clear() {
 }
 
 func (t *TTransceiver) Execute() {
-	t.queue = make([]TSxPackage, 10)
 	for {
 		err := t.collectData()
 		if err != nil {
@@ -46,6 +53,15 @@ func (t *TTransceiver) Execute() {
 		}
 		time.Sleep(time.Millisecond * 100)
 	}
+}
+
+func (t *TTransceiver) getFreeReaderId() (id int, err error) {
+	for _, reader := range t.Readers {
+		if reader.Serial != "" {
+			return int(reader.ID), nil
+		}
+	}
+	return -1, errors.New("can not find valid device id")
 }
 
 func (t *TTransceiver) collectData() (err error) {
@@ -84,7 +100,7 @@ func (t *TTransceiver) collectData() (err error) {
 			}
 
 			if pkgSize > 0 {
-				t.Enqueue(BytesToSxPackage(rcBytes[:pkgSize]))
+				t.PackageQueue.Enqueue(BytesToSxPackage(rcBytes[:pkgSize]))
 				if len(rcBytes) >= pkgSize {
 					rcBytes = append(rcBytes[pkgSize:], nil...)
 					rcBytes = rcBytes[:len(rcBytes)-pkgSize]
@@ -92,10 +108,10 @@ func (t *TTransceiver) collectData() (err error) {
 			}
 		}
 
-		if Count() > 0 {
-			fmt.Printf("Result is %d\n", Count())
-			break
-		}
+		// if Count() > 0 {
+		// 	fmt.Printf("Result is %d\n", Count())
+		// 	break
+		// }
 
 		lastAddress = sndPackage.DstAddr
 		hdrMaskSize++
@@ -105,6 +121,7 @@ func (t *TTransceiver) collectData() (err error) {
 	if hdrMaskSize == 8 {
 		fmt.Printf("Result is %d\n", -(lastAddress & 0x7F))
 	}
+	return nil
 
 }
 
@@ -120,27 +137,30 @@ func (t *TTransceiver) handleCollision(device_id int) {
 }
 
 func (t *TTransceiver) processPackage() {
-	for packages.Count() > 0 {
-		pkg := packages.Dequeue()
+	for t.PackageQueue.Count() > 0 {
+		pkg := t.PackageQueue.Dequeue()
 
-		reader, exists := e.Readers[pkg.SrcAddr]
-		if !exists {
-			reader = &TSxReader{
-				ID:         pkg.SrcAddr,
-				Serial:     "",
-				Worker:     "",
-				WorkerCard: "",
+		reader := t.Readers[pkg.SrcAddr]
+		if reader.Serial != "" {
+			reader := &TReader{
+				// ID:         pkg.SrcAddr,
+				// Serial:     "",
+				// Worker:     "",
+				// WorkerCard: "",
 			}
-			e.Readers[pkg.SrcAddr] = reader
+			t.Readers[pkg.SrcAddr] = *reader
 		}
 
-		newId := byte(0)
-
-		if pkg.SerialNum != "" {
+		rcvPackage, err := BytesToSxPackageData(pkg.Data)
+		if err != nil {
+			return
+		}
+		newId := -1
+		if rcvPackage.Serial != "" {
 			if reader.Serial == "" {
-				reader.Serial = pkg.SerialNum
-			} else if (reader.ID == e.FirstReaderId) || (reader.Serial != pkg.SerialNum) {
-				newId = e.GetFreeReaderId()
+				reader.Serial = rcvPackage.Serial
+			} else if (reader.ID == 2) || (reader.Serial != rcvPackage.Serial) {
+				newId, err = t.getFreeReaderId()
 			}
 		} else {
 			if reader.Serial == "" {
@@ -149,20 +169,20 @@ func (t *TTransceiver) processPackage() {
 		}
 
 		if newId > 0 {
-			reader.SetDeviceId(pkg.SerialNum, newId)
-			reader = e.Readers[newId]
-			reader.Serial = pkg.SerialNum
+			reader.SetDeviceId(rcvPackage.Serial, newId)
+			reader = t.Readers[newId]
+			reader.Serial = rcvPackage.Serial
 			reader.Worker = ""
 			reader.WorkerCard = ""
 		}
 
-		reader.DeleteData(pkg.DataStr[:10])
+		reader.DeleteData(pkg.Data[:10])
 
 		_workerCard := "2E0055300A00"
 		_workerNo := "123"
 
-		if pkg.DataId == "" {
-			if pkg.DataStr != _workerCard {
+		if rcvPackage.WorkerNo == "" {
+			if rcvPackage.Data != _workerCard {
 				reader.Beep(3, 0)
 				reader.TextOut(0, 1, "Invalid User Card")
 				continue
@@ -170,26 +190,26 @@ func (t *TTransceiver) processPackage() {
 
 			if reader.Worker == "" {
 				reader.Worker = _workerNo
-				reader.WorkerCard = pkg.DataStr
+				reader.WorkerCard = rcvPackage.Data
 			} else if reader.Worker != _workerNo {
 				errorMsg := fmt.Sprintf("Duplicate reader[%d] error %s", reader.ID, "Unknow Reason")
-				e.Logger.Warning(errorMsg)
+				// e.Logger.Warning(errorMsg)
 				reader.TextOut(0, 1, errorMsg)
 				reader.Beep(1, 0)
 				reader.LogOff()
 				continue
 			}
 
-			e.Logger.Debug("Reader[%d] Logon:[%s-%s]", reader.ID, reader.Worker, reader.WorkerCard)
+			// t.Logger.Debug("Reader[%d] Logon:[%s-%s]", reader.ID, reader.Worker, reader.WorkerCard)
 			reader.LogOn(reader.Worker)
 			continue
 		} else {
 			if reader.Worker == "" {
-				reader.Worker = pkg.DataId
+				reader.Worker = rcvPackage.WorkerNo
 				reader.WorkerCard = _workerCard
-			} else if reader.Worker != pkg.DataId {
+			} else if reader.Worker != rcvPackage.WorkerNo {
 				errorMsg := fmt.Sprintf("Duplicate reader[%d] error %s", reader.ID, "F1 Login")
-				e.Logger.Warning(errorMsg)
+				// e.Logger.Warning(errorMsg)
 				reader.TextOut(0, 1, errorMsg)
 				reader.Beep(3, 0)
 				reader.LogOff()
@@ -197,8 +217,8 @@ func (t *TTransceiver) processPackage() {
 			}
 		}
 
-		if pkg.DataStr == reader.WorkerCard {
-			e.Logger.Debug("Reader[%d] LogOff:[%s-%s]", reader.ID, reader.Worker, reader.WorkerCard)
+		if rcvPackage.Data == reader.WorkerCard {
+			// e.Logger.Debug("Reader[%d] LogOff:[%s-%s]", reader.ID, reader.Worker, reader.WorkerCard)
 			reader.Worker = ""
 			reader.WorkerCard = ""
 			reader.Beep(1, 0)
@@ -206,8 +226,7 @@ func (t *TTransceiver) processPackage() {
 		} else {
 			reader.Beep(3, 0)
 			reader.TextOut(0, 1, "Invalid Card")
-			e.Logger.Debug("Reader[%d] SCANCARD:[%s]", reader.ID, pkg.DataStr)
+			// e.Logger.Debug("Reader[%d] SCANCARD:[%s]", reader.ID, rcvPackage.Data)
 		}
 	}
-}
 }
