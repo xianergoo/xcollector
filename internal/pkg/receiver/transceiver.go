@@ -3,15 +3,24 @@ package receiver
 import (
 	"errors"
 	"fmt"
+	"log"
 	"sync"
 	"time"
+	// "github.com/sirupsen/logrus"
 )
 
 type TTransceiver struct {
 	TEngine
 	Readers      [127]TReader
 	PackageQueue TPackageQueue
+	Logger       *log.Logger
+	Input        chan string
 	Enabled      bool
+}
+
+func newLoggerForTransceiver(transceiver *TTransceiver) *log.Logger {
+	// log.New(log.Writer(), )
+	return log.New(log.Writer(), "["+transceiver.Host+"] ", log.Ldate|log.Ltime|log.Lshortfile)
 }
 
 type TPackageQueue struct {
@@ -47,11 +56,12 @@ func (q *TPackageQueue) Clear() {
 
 func (t *TTransceiver) Execute() {
 	for {
+		t.Logger.Printf("test\n")
 		err := t.collectData()
 		if err != nil {
 			//
 		}
-		time.Sleep(time.Millisecond * 100)
+		time.Sleep(time.Millisecond * 1000)
 	}
 }
 
@@ -65,6 +75,7 @@ func (t *TTransceiver) getFreeReaderId() (id int, err error) {
 }
 
 func (t *TTransceiver) collectData() (err error) {
+	t.Logger.Printf("test\n")
 	hdrMaskBits := byte(1) // starting mask bits is 01
 	hdrMaskSize := byte(1)
 	lastAddress := byte(0)
@@ -224,8 +235,9 @@ func (t *TTransceiver) processPackage() {
 			reader.Beep(1, 0)
 			reader.LogOff()
 		} else {
-			reader.Beep(3, 0)
-			reader.TextOut(0, 1, "Invalid Card")
+			// reader.Beep(3, 0)
+			// reader.TextOut(0, 1, "Invalid Card")
+			t.Input <- rcvPackage.Data
 			// e.Logger.Debug("Reader[%d] SCANCARD:[%s]", reader.ID, rcvPackage.Data)
 		}
 	}

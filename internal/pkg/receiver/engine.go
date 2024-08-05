@@ -11,10 +11,12 @@ type TEngine struct {
 	Host     string
 	Port     uint
 	Location string
+	Logger   *log.Logger
 }
 
 func (e *TEngine) Connect() error {
-	log.Printf("engine connect %s-%d\n", e.Host, e.Port)
+	e.Logger.Printf("engine connect %s-%d\n", e.Host, e.Port)
+	// log.Printf("engine connect %s-%d\n", e.Host, e.Port)
 	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", e.Host, e.Port))
 	if err != nil {
 		return err
@@ -33,6 +35,7 @@ func (e *TEngine) Connect() error {
 }
 
 func (e *TEngine) Send(data []byte) error {
+	e.Logger.Printf("Send %s\n", data)
 	_, err := e.conn.Write(data)
 	return err
 }
@@ -43,10 +46,23 @@ func (e *TEngine) Receive() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	e.Logger.Printf("Recv %s\n", buffer)
 	return buffer[:n], nil
 }
 
 func (e *TEngine) SendAndRecv(bytes []byte) ([]byte, error) {
-	// 这里只是一个示例，您可以替换为实际的发送和接收逻辑
-	return bytes, nil
+
+	err := e.Send(bytes)
+	if err != nil {
+		return nil, err
+	}
+
+	// 接收响应
+	buffer, err := e.Receive()
+	if err != nil {
+		return nil, err
+	}
+
+	// 返回接收到的数据
+	return buffer, nil
 }
